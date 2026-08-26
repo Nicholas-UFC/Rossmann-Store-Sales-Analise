@@ -10,10 +10,6 @@ def ml_error_regression(model_name, y, yhat):
     mape = mean_absolute_percentage_error(y, yhat)
     rmse = np.sqrt(mean_squared_error(y, yhat))
 
-    return pd.DataFrame({
-        'Model Name': model_name,
-        'MAE': mae,
-        'MAPE': mape,
-        'RMSE': rmse
-    }, index=[0]
-)
+    return pd.DataFrame(
+        {"Model Name": model_name, "MAE": mae, "MAPE": mape, "RMSE": rmse}, index=[0]
+    )

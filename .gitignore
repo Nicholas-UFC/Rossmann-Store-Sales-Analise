@@ -17,3 +17,6 @@ main.copy.ipynb
 
 # Cache do Ruff
 .ruff_cache
+
+# Arquivos de modelos serializados
+*.pkl
