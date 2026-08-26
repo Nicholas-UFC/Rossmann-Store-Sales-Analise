@@ -18,3 +18,43 @@ dependencies = [
     "statsmodels>=0.14.6",
     "tabulate>=0.10.0",
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+# Inclui análise em arquivos do Jupyter Notebook
+extend-include = ["*.ipynb"]
+exclude = [".venv", "venv", ".ipynb_checkpoints"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # Erros de estilo padrão PEP 8
+    "F",   # Pyflakes: variáveis declaradas e não usadas
+    "I",   # isort: organização automática de imports
+    "B",   # Bugbear: previne armadilhas/bugs comuns
+    "UP",  # pyupgrade: garante a sintaxe moderna do Python 3.12
+    "SIM", # Simplify: simplifica condicionais e logicas
+    "C4",  # Comprehensions: otimiza dicionários e listas
+    "A",   # Builtins: impede sobrescrever funções nativas (ex: list, str)
+    "PTH", # Pathlib: estimula o uso moderno de caminhos
+    "PL",  # Pylint: complexidade de código
+    "RUF", # Regras nativas do Ruff
+]
+
+# Regras que atrapalham o fluxo do Jupyter e devem ser ignoradas:
+ignore = [
+    "E402",   # Permite imports no meio do notebook (comum em análises)
+    "F401",   # Desativa aviso de import não utilizado (útil ao importar pandas/plt sem usar na hora)
+    "F841",   # Desativa aviso de variável atribuída mas não usada (comum em testes rápidos)
+    "PLR2004",# Permite números mágicos (ex: filtros de df4['month'] == 12)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.4",
+]
