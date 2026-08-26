@@ -11,4 +11,9 @@ main.copy.ipynb
 
 # Virtual environments
 .venv
+
+# Chaves secretas
 .env
+
+# Cache do Ruff
+.ruff_cache
