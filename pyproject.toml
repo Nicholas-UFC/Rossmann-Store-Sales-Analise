@@ -6,17 +6,20 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "boruta>=0.4.3",
+    "fastapi>=0.141.1",
     "inflection>=0.5.1",
     "kagglehub>=1.0.2",
     "matplotlib>=3.11.1",
     "nbstripout>=0.9.1",
     "pandas>=3.0.5",
     "plotly>=6.9.0",
+    "python-dotenv>=1.2.3",
     "scikit-learn>=1.9.0",
     "scipy>=1.18.1",
     "seaborn>=0.13.2",
     "statsmodels>=0.14.6",
     "tabulate>=0.10.0",
+    "uvicorn>=0.52.4",
     "xgboost>=3.4.1",
 ]
 
@@ -57,5 +60,13 @@ docstring-code-format = true
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
     "ruff>=0.16.4",
 ]
+
+[tool.pytest.ini_options]
+# Diretório onde o pytest procura os testes
+testpaths = ["api/tests"]
+# Garante que a raiz do projeto esteja no sys.path (imports como api.services.rossman)
+pythonpath = ["."]
