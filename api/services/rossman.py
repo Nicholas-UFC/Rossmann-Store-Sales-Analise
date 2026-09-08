@@ -231,8 +231,9 @@ class Rossman:
             "week_of_year_cos",
         ]
 
-        # Colunas para adicionar
-        feat_to_add = ["date", "sales"]
+        # `date` não entra nas features do modelo (evita divergência treino/serve).
+        # `sales` ainda está aqui temporariamente, até corrigirmos o problema 1 (leakage).
+        feat_to_add = ["sales"]
 
         # resultado final
         cols_selected_boruta.extend(feat_to_add)
@@ -246,17 +247,34 @@ class Rossman:
 
         return df_formatado
 
+    @staticmethod
+    def _model_feature_names(model):
+        """Retorna as features esperadas pelo modelo salvo."""
+        if hasattr(model, "feature_names_in_"):
+            return list(model.feature_names_in_)
+
+        booster = getattr(model, "get_booster", lambda: None)()
+        if booster is not None and getattr(booster, "feature_names", None):
+            return list(booster.feature_names)
+
+        return None
+
     def get_prediction(self, model, original_data, test_data):
-        cols_expected = list(getattr(model, "feature_names_in_", test_data.columns))
+        cols_expected = self._model_feature_names(model)
+        if cols_expected is None:
+            raise ValueError("Não foi possível identificar as features esperadas pelo modelo.")
+
+        if "date" in cols_expected:
+            raise ValueError(
+                "O modelo carregado ainda foi treinado com a feature 'date'. "
+                "Execute o main.ipynb novamente (Passo 10) para gerar um modelo sem 'date'."
+            )
+
         for col in cols_expected:
             if col not in test_data.columns:
-                test_data[col] = pd.NaT if col == "date" else 0
+                test_data[col] = 0
 
-        # XGBoost não aceita datetime: converte 'date' para inteiro (timestamp)
-        if "date" in test_data.columns:
-            test_data["date"] = test_data["date"].astype("int64")
-
-        pred = model.predict(test_data[list(cols_expected)])
+        pred = model.predict(test_data[cols_expected])
 
         original_data["prediction"] = np.expm1(pred)
 
