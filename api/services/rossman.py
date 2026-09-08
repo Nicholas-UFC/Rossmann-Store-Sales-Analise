@@ -231,13 +231,8 @@ class Rossman:
             "week_of_year_cos",
         ]
 
-        # `date` não entra nas features do modelo (evita divergência treino/serve).
-        # `sales` ainda está aqui temporariamente, até corrigirmos o problema 1 (leakage).
-        feat_to_add = ["sales"]
-
-        # resultado final
-        cols_selected_boruta.extend(feat_to_add)
-
+        # `date` e `sales` não entram nas features do modelo.
+        # `sales` é o target e `date` é usado apenas na engenharia/validação temporal.
         return df6[cols_selected_boruta]
 
     def formatando_dados(self, df_brutos):
@@ -264,10 +259,13 @@ class Rossman:
         if cols_expected is None:
             raise ValueError("Não foi possível identificar as features esperadas pelo modelo.")
 
-        if "date" in cols_expected:
+        leaked_features = [col for col in ("date", "sales") if col in cols_expected]
+        if leaked_features:
             raise ValueError(
-                "O modelo carregado ainda foi treinado com a feature 'date'. "
-                "Execute o main.ipynb novamente (Passo 10) para gerar um modelo sem 'date'."
+                "O modelo carregado ainda foi treinado com as features "
+                f"{leaked_features}, o que causa vazamento de dados. "
+                "Execute o main.ipynb novamente (Passo 10) para gerar um modelo "
+                "sem 'date' e sem 'sales'."
             )
 
         for col in cols_expected:
