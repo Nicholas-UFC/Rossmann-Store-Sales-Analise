@@ -1,7 +1,7 @@
 """Schemas Pydantic usados pela API Rossmann."""
 
 from datetime import date
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,13 +25,13 @@ class RossmannStore(BaseModel):
     SchoolHoliday: Literal[0, 1]
     StoreType: Literal["a", "b", "c", "d"]
     Assortment: Literal["a", "b", "c"]
-    CompetitionDistance: Optional[float] = Field(default=None, ge=0)
-    CompetitionOpenSinceMonth: Optional[int] = Field(default=None, ge=1, le=12)
-    CompetitionOpenSinceYear: Optional[int] = Field(default=None, ge=1900, le=2100)
+    CompetitionDistance: float | None = Field(default=None, ge=0)
+    CompetitionOpenSinceMonth: int | None = Field(default=None, ge=1, le=12)
+    CompetitionOpenSinceYear: int | None = Field(default=None, ge=1900, le=2100)
     Promo2: Literal[0, 1]
-    Promo2SinceWeek: Optional[float] = Field(default=None, ge=1, le=53)
-    Promo2SinceYear: Optional[float] = Field(default=None, ge=1900, le=2100)
-    PromoInterval: Optional[str] = None
+    Promo2SinceWeek: float | None = Field(default=None, ge=1, le=53)
+    Promo2SinceYear: float | None = Field(default=None, ge=1900, le=2100)
+    PromoInterval: str | None = None
 
 
 class RossmannPrediction(RossmannStore):

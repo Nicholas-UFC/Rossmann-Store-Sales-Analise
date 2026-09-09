@@ -5,7 +5,7 @@ from pickle import load
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 
-from api.schemas import RossmannPrediction, RossmannStore
+from api.models.schemas import RossmannPrediction, RossmannStore
 from api.services.rossman import Rossman
 
 # Define o caminho base de forma dinâmica
