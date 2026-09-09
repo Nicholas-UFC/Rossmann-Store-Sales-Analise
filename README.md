@@ -171,6 +171,21 @@ POST /rossman/predict
 
 📘 Documentação interativa (Swagger): `http://localhost:8000/docs`
 
+### Endpoints auxiliares
+
+```text
+GET /health        → status da API e modelo carregado
+GET /model-info    → tipo do modelo, quantidade e nomes das features
+```
+
+### Validações da API
+
+- Rejeita payload vazio (`400`)
+- Rejeita lojas fechadas (`Open != 1`) (`422`)
+- Rejeita categorias desconhecidas e campos extras (`422`)
+- Rejeita datas fora do período suportado (`422`)
+- Limite de **10.000 registros** por requisição (`413`)
+
 ---
 
 ## 📁 Estrutura do Projeto
@@ -178,8 +193,14 @@ POST /rossman/predict
 ```
 .
 ├── api/
+│   ├── __init__.py
 │   ├── app.py                  # API FastAPI
+│   ├── config/
+│   │   └── config.py           # Caminhos, limites e período suportado
+│   ├── models/
+│   │   └── schemas.py          # Schemas Pydantic de entrada/saída
 │   ├── services/
+│   │   ├── __init__.py
 │   │   └── rossman.py          # Pipeline de transformação + predição
 │   └── tests/
 │       ├── conftest.py         # Fixtures compartilhadas (pytest)
