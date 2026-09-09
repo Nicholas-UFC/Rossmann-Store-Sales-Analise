@@ -15,10 +15,8 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
+from api.config.config import MODEL_PATH
 from api.services.rossman import Rossman
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-MODEL_PATH = PROJECT_ROOT / "models" / "model_rossmann.pkl"
 
 
 def get_data_dir() -> Path:
@@ -28,10 +26,8 @@ def get_data_dir() -> Path:
         data_dir = Path(env_dir).expanduser().resolve()
     else:
         try:
-            data_dir = Path(
-                kagglehub.competition_download("rossmann-store-sales")
-            ).resolve()
-        except Exception as exc:  # noqa: PLW0718 - queremos uma mensagem orientativa
+            data_dir = Path(kagglehub.competition_download("rossmann-store-sales")).resolve()
+        except Exception as exc:
             raise RuntimeError(
                 "Não foi possível baixar/localizar os dados da Rossmann pelo kagglehub. "
                 "Defina ROSSMANN_DATA_DIR apontando para a pasta que contém os arquivos "
@@ -75,23 +71,24 @@ def df_raw() -> pd.DataFrame:
 
 @pytest.fixture(scope="session")
 def pipeline() -> Rossman:
-    """Instância do pipeline com os 5 scalers carregados."""
+    """Instância do pipeline com os scalers carregados."""
     return Rossman()
 
 
 @pytest.fixture(scope="session")
 def model():
     """Modelo treinado carregado do disco."""
-    with Path.open(require_model(), "rb") as f:
-        return load(f)
+    with MODEL_PATH.open("rb") as file:
+        return load(file)
 
 
 @pytest.fixture(scope="session")
 def client() -> TestClient:
-    """Cliente de teste do FastAPI (roda a aplicação em processo, sem servidor)."""
+    """Cliente de teste do FastAPI com lifespan executado."""
     require_model()
 
-    # Import tardio: api.app carrega o modelo no momento do import.
-    from api.app import app
+    # Import tardio: api.app registra a aplicação sem carregar o modelo no import.
+    from api.app import app  # noqa: PLC0415
 
-    return TestClient(app)
+    with TestClient(app) as test_client:
+        yield test_client

@@ -5,14 +5,13 @@ from pickle import load
 import numpy as np
 import pandas as pd
 
+from api.config.config import PARAMETERS_PATH
+
 
 class Rossman:
     def __init__(self):
-        # Define o caminho base de forma dinâmica
-        self.home_path = Path(__file__).parent.parent.parent if "__file__" in globals() else Path()
-        param_path = self.home_path / "parameters"
-
         # Carrega os scalers garantindo o fechamento dos arquivos
+        param_path = PARAMETERS_PATH
         with Path.open(param_path / "competition_distance_scaler.pkl", "rb") as f:
             self.rs_competition_distance = load(f)
 
@@ -236,13 +235,17 @@ class Rossman:
     def _model_feature_names(model):
         """Retorna as features esperadas pelo modelo salvo."""
         if hasattr(model, "feature_names_in_"):
-            return list(model.feature_names_in_)
+            return [str(name) for name in model.feature_names_in_]
 
         booster = getattr(model, "get_booster", lambda: None)()
         if booster is not None and getattr(booster, "feature_names", None):
-            return list(booster.feature_names)
+            return [str(name) for name in booster.feature_names]
 
         return None
+
+    def obter_features_modelo(self, model):
+        """Retorna as features esperadas pelo modelo (interface pública)."""
+        return self._model_feature_names(model)
 
     def get_prediction(self, model, original_data, test_data):
         model_features = self._model_feature_names(model)
@@ -254,13 +257,16 @@ class Rossman:
                 "nem pelo contrato parameters/feature_names.json."
             )
 
-        if model_features is not None and contract_features is not None:
-            if set(model_features) != set(contract_features):
-                raise ValueError(
-                    "Contrato de features divergente entre parameters/feature_names.json "
-                    "e o modelo carregado. Execute o main.ipynb novamente para regenerar "
-                    "o modelo e o feature_names.json."
-                )
+        if (
+            model_features is not None
+            and contract_features is not None
+            and set(model_features) != set(contract_features)
+        ):
+            raise ValueError(
+                "Contrato de features divergente entre parameters/feature_names.json "
+                "e o modelo carregado. Execute o main.ipynb novamente para regenerar "
+                "o modelo e o feature_names.json."
+            )
 
         # A ordem usada na predição é a do modelo quando disponível.
         cols_expected = model_features or contract_features
@@ -274,9 +280,12 @@ class Rossman:
                 "sem 'date' e sem 'sales'."
             )
 
-        for col in cols_expected:
-            if col not in test_data.columns:
-                test_data[col] = 0
+        missing_features = [col for col in cols_expected if col not in test_data.columns]
+        if missing_features:
+            raise ValueError(
+                "Features obrigatórias ausentes após o pipeline: "
+                f"{missing_features}. Verifique o contrato em feature_names.json."
+            )
 
         pred = model.predict(test_data[cols_expected])
 
