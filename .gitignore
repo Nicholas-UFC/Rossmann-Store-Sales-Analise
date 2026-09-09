@@ -21,3 +21,6 @@ main.copy.ipynb
 # Arquivos de modelos serializados
 *.pkl
 feature_names.json
+
+# Logs do CatBoost
+catboost_info/
