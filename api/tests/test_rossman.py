@@ -10,30 +10,6 @@ import pandas as pd
 
 from api.services.rossman import Rossman
 
-# Features esperadas pelo modelo (selecao_variaveis em rossman.py)
-FEATURES_ESPERADAS = [
-    "store",
-    "promo",
-    "store_type",
-    "assortment",
-    "competition_distance",
-    "competition_open_since_month",
-    "competition_open_since_year",
-    "promo2",
-    "promo2_since_week",
-    "promo2_since_year",
-    "competition_time_month",
-    "promo_time_week",
-    "day_of_week_sin",
-    "day_of_week_cos",
-    "month_sin",
-    "month_cos",
-    "day_sin",
-    "day_cos",
-    "week_of_year_sin",
-    "week_of_year_cos",
-]
-
 
 def test_pipeline_carrega_todos_os_scalers(pipeline: Rossman) -> None:
     """O construtor deve carregar os 5 scalers de parameters/."""
@@ -49,12 +25,18 @@ def test_pipeline_carrega_todos_os_scalers(pipeline: Rossman) -> None:
         assert scaler is not None, f"Scaler '{nome}' não foi carregado"
 
 
+def test_pipeline_carrega_contrato_de_features(pipeline: Rossman) -> None:
+    """O contrato de features deve ser carregado de parameters/feature_names.json."""
+    assert pipeline.feature_names is not None, "feature_names não foi carregado"
+    assert len(pipeline.feature_names) > 0, "feature_names.json está vazio"
+
+
 def test_formatando_dados_gera_features_esperadas(pipeline: Rossman, df_raw: pd.DataFrame) -> None:
-    """formatando_dados deve produzir todas as features usadas pelo modelo."""
+    """formatando_dados deve produzir todas as features do contrato do modelo."""
     df_formatado = pipeline.formatando_dados(df_raw.copy())
 
     assert not df_formatado.empty, "formatando_dados retornou DataFrame vazio"
-    for col in FEATURES_ESPERADAS:
+    for col in pipeline.feature_names:
         assert col in df_formatado.columns, f"Coluna '{col}' ausente após formatando_dados"
 
 

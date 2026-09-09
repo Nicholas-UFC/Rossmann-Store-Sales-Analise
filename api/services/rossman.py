@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from pickle import load
 
@@ -26,6 +27,14 @@ class Rossman:
 
         with Path.open(param_path / "store_type_scaler.pkl", "rb") as f:
             self.le = load(f)
+
+        # Contrato de features salvo pelo notebook no momento do treino.
+        feature_names_path = param_path / "feature_names.json"
+        if feature_names_path.exists():
+            with Path.open(feature_names_path, "r", encoding="utf-8") as f:
+                self.feature_names = json.load(f)
+        else:
+            self.feature_names = None
 
     def limpando_dados(self, df1):
         # 1.1 Renomeando As Colunas
@@ -169,6 +178,15 @@ class Rossman:
         # 5.3.1 Codificação
         df5 = pd.get_dummies(df5, prefix=["state_holiday"], columns=["state_holiday"])
 
+        # Garante que dummies previstas no contrato existam mesmo quando a categoria
+        # não aparece no payload (ex.: nenhuma loja em feriado de Natal).
+        expected_dummies = [
+            col for col in (self.feature_names or []) if col.startswith("state_holiday_")
+        ]
+        for col in expected_dummies:
+            if col not in df5.columns:
+                df5[col] = 0
+
         df5["store_type"] = self.le.transform(df5["store_type"])
 
         assortment_dict = {"basic": 1, "extra": 2, "extended": 3}
@@ -197,43 +215,15 @@ class Rossman:
         return df5
 
     def selecao_variaveis(self, df6):
-        # 6.1 Dividindo O DF Em Treino E Teste
-        cols_drop = [
-            "week_of_year",
-            "day",
-            "month",
-            "day_of_week",
-            "competition_since",
-            "year_week",
-        ]
+        """Seleciona as features definidas no contrato salvo em feature_names.json."""
+        if self.feature_names is None:
+            raise ValueError(
+                "parameters/feature_names.json não encontrado. "
+                "Execute o notebook para gerar o contrato de features."
+            )
 
-        # 6.3 Seleção Manual De Variaveis
-        cols_selected_boruta = [
-            "store",
-            "promo",
-            "store_type",
-            "assortment",
-            "competition_distance",
-            "competition_open_since_month",
-            "competition_open_since_year",
-            "promo2",
-            "promo2_since_week",
-            "promo2_since_year",
-            "competition_time_month",
-            "promo_time_week",
-            "day_of_week_sin",
-            "day_of_week_cos",
-            "month_sin",
-            "month_cos",
-            "day_sin",
-            "day_cos",
-            "week_of_year_sin",
-            "week_of_year_cos",
-        ]
-
-        # `date` e `sales` não entram nas features do modelo.
-        # `sales` é o target e `date` é usado apenas na engenharia/validação temporal.
-        return df6[cols_selected_boruta]
+        # `date` e `sales` não entram no contrato de features do modelo.
+        return df6[self.feature_names]
 
     def formatando_dados(self, df_brutos):
         df_formatado = self.limpando_dados(df_brutos)
@@ -255,9 +245,25 @@ class Rossman:
         return None
 
     def get_prediction(self, model, original_data, test_data):
-        cols_expected = self._model_feature_names(model)
-        if cols_expected is None:
-            raise ValueError("Não foi possível identificar as features esperadas pelo modelo.")
+        model_features = self._model_feature_names(model)
+        contract_features = self.feature_names
+
+        if model_features is None and contract_features is None:
+            raise ValueError(
+                "Não foi possível identificar as features esperadas pelo modelo "
+                "nem pelo contrato parameters/feature_names.json."
+            )
+
+        if model_features is not None and contract_features is not None:
+            if set(model_features) != set(contract_features):
+                raise ValueError(
+                    "Contrato de features divergente entre parameters/feature_names.json "
+                    "e o modelo carregado. Execute o main.ipynb novamente para regenerar "
+                    "o modelo e o feature_names.json."
+                )
+
+        # A ordem usada na predição é a do modelo quando disponível.
+        cols_expected = model_features or contract_features
 
         leaked_features = [col for col in ("date", "sales") if col in cols_expected]
         if leaked_features:
