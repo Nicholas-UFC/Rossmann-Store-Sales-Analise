@@ -1,6 +1,6 @@
 # 🏪 Rossmann Store Sales — Previsão de Vendas em Produção
 
-> Previsão diária de vendas de **1.115 lojas** da Rossmann usando **Random Forest Regressor**, servida por uma **API FastAPI**.
+> Previsão diária de vendas de **1.115 lojas** da Rossmann. O **LightGBM tunado** foi escolhido para substituir o Random Forest de **7,3 GB**, reduzindo o artefato para **20,45 MB** e melhorando o MAPE no holdout.
 
 Projeto completo de **Data Science em Produção**: da análise exploratória ao deploy do modelo em uma API REST.
 
@@ -8,12 +8,35 @@ Projeto completo de **Data Science em Produção**: da análise exploratória ao
 
 ## ✨ Destaques
 
-- 🏆 **Random Forest Regressor** no holdout: **MAPE 11,0%** e **MAE 727,10**
-- 📊 Comparação de **12 modelos** com holdout + validação temporal
+- 🏆 **LightGBM tunado** no holdout: **MAPE 10,14%**, **MAE 674,09** e artefato de **20,45 MB**
+- 💰 Projeção no holdout: **R$ 293.910.700,44**
+- 📦 **Random Forest anterior:** MAPE 11,0% e MAE 727,10, mas artefato de **7,3 GB**
+- 📊 Comparação de **12 modelos base** + tuning do LightGBM
 - 🔬 Seleção de variáveis com **Boruta**
 - ⏱️ Validação temporal com **walk-forward de 42 dias**
 - 🚀 **API FastAPI** servindo o modelo (`POST /rossman/predict`)
 - 🧪 **6 testes automatizados** com pytest
+
+---
+
+## 🔁 Atualização do Modelo — Random Forest → LightGBM
+
+O Random Forest foi a primeira escolha: era o melhor no holdout (**MAPE 11,0%**, **MAE 727,10**) e estava à frente do LightGBM baseline na validação temporal. Porém, o artefato serializado tinha **7,3 GB**, o que tornava o deploy caro: exigia muita RAM e aumentava o tempo de carregamento. Em ambiente de 16 GB, com ~2,2 GB livres, o modelo não carregava. Antes de fazer o deploy, era necessário testar outros modelos da lista para buscar uma resposta parecida com um artefato menor.
+
+Para resolver isso, testei outro modelo da lista: o **LightGBM**. Usei o mesmo split temporal, as mesmas 16 features e as mesmas 5 janelas walk-forward de 42 dias, com **grid search** e scorer **MAPE na escala original**.
+
+| Modelo | MAPE | MAE | RMSE | Tamanho do artefato |
+|---|---:|---:|---:|---:|
+| Random Forest (anterior) | 11,0% | 727,10 | 1.049,61 | 7,3 GB |
+| **LightGBM tunado** | **10,14%** | **674,09** | **970,52** | **20,45 MB** |
+
+O LightGBM tunado ficou **0,86 ponto percentual melhor no MAPE** e **~357× menor**. O gate de 1 GB passou com folga. A configuração escolhida foi `900` árvores, `255` folhas, `learning_rate=0.1` e `min_child_samples=50`. O grid search foi usado para ajustar a qualidade; a redução do artefato vem da troca de modelo e dos limites de folhas/árvores, não do grid sozinho.
+
+> O baseline LightGBM de 23,2% estava underfit; após tuning, o modelo passou a superar o Random Forest. O melhor ponto ficou na borda do grid, então ainda existe espaço para novos testes, mas o resultado atual já atende ao critério de qualidade e tamanho.
+
+Projeção de negócio no holdout: **R$ 293.910.700,44**.
+
+O LightGBM é o modelo escolhido para substituir o Random Forest. A API carrega `models/model_rossmann.pkl`, que já contém o LightGBM. O RF antigo deve ser mantido como backup para rollback.
 
 ## 📊 Sobre o Projeto
 
@@ -36,20 +59,21 @@ Projeto completo de **Data Science em Produção**: da análise exploratória ao
 
 | # | Modelo | MAE | MAPE | RMSE |
 |---:|---|---:|---:|---:|
-| 1 | **Random Forest Regressor** | **727,10** | **11,0%** | **1.049,61** |
-| 2 | Extra Trees Regressor | 740,67 | 11,3% | 1.060,56 |
-| 3 | Decision Tree Regressor | 1.014,90 | 14,9% | 1.517,56 |
-| 4 | Hist Gradient Boosting | 1.318,06 | 19,7% | 1.900,94 |
-| 5 | LightGBM Regressor | 1.541,63 | 23,2% | 2.198,61 |
-| 6 | XGBoost Regressor | 1.668,35 | 24,9% | 2.427,98 |
-| 7 | CatBoost Regressor | 1.701,92 | 25,6% | 2.446,45 |
-| 8 | Elastic Net Regressor | 1.880,70 | 28,8% | 2.721,73 |
-| 9 | Lasso (Linear Regularized) | 1.891,85 | 29,0% | 2.740,80 |
-| 10 | Linear Regression | 1.876,96 | 29,9% | 2.666,29 |
-| 11 | Ridge Regression | 1.876,87 | 29,9% | 2.666,01 |
-| 12 | Baseline (média por loja) | 1.354,80 | 45,5% | 1.835,14 |
+| 1 | **LightGBM Regressor (tunado)** | **674,09** | **10,14%** | **970,52** |
+| 2 | Random Forest Regressor | 727,10 | 11,0% | 1.049,61 |
+| 3 | Extra Trees Regressor | 740,67 | 11,3% | 1.060,56 |
+| 4 | Decision Tree Regressor | 1.014,90 | 14,9% | 1.517,56 |
+| 5 | Hist Gradient Boosting | 1.318,06 | 19,7% | 1.900,94 |
+| 6 | LightGBM Regressor (baseline) | 1.541,63 | 23,2% | 2.198,61 |
+| 7 | XGBoost Regressor | 1.668,35 | 24,9% | 2.427,98 |
+| 8 | CatBoost Regressor | 1.701,92 | 25,6% | 2.446,45 |
+| 9 | Elastic Net Regressor | 1.880,70 | 28,8% | 2.721,73 |
+| 10 | Lasso (Linear Regularized) | 1.891,85 | 29,0% | 2.740,80 |
+| 11 | Linear Regression | 1.876,96 | 29,9% | 2.666,29 |
+| 12 | Ridge Regression | 1.876,87 | 29,9% | 2.666,01 |
+| 13 | Baseline (média por loja) | 1.354,80 | 45,5% | 1.835,14 |
 
-> Os modelos de boosting (HistGradientBoosting, LightGBM, CatBoost e XGBoost) foram avaliados com hiperparâmetros básicos, **sem ajuste fino**. O Random Forest passou por `GridSearchCV`.
+> O LightGBM tunado passou por `GridSearchCV` com scorer MAPE. O Random Forest também passou por `GridSearchCV`, mas foi limitado pelo tamanho do artefato. Os demais modelos de boosting foram avaliados com hiperparâmetros básicos, **sem ajuste fino**.
 
 ---
 
@@ -71,34 +95,42 @@ Validação walk-forward com 5 janelas de **42 dias**, usando apenas informaçõ
 | Ridge Regression | 2.079,16 ± 310,18 | 30% ± 1% | 2.969,55 ± 477,49 |
 | Linear Regression | 2.079,38 ± 310,44 | 30% ± 1% | 2.969,90 ± 477,73 |
 
-> O Extra Trees teve CV levemente melhor que o Random Forest, mas o Random Forest venceu no holdout e foi o modelo escolhido para produção.
+> Na comparação inicial, o Random Forest estava à frente do LightGBM baseline na CV (**12% ± 3%** vs **23% ± 1%** de MAPE). Após o tuning, o LightGBM tunado chegou a **11,36% ± 1,62** de MAPE CV e superou o RF no holdout. MAE e RMSE CV do LightGBM tunado não foram registrados nessa execução do grid.
+
+> O Extra Trees teve CV levemente melhor que o Random Forest, mas o Random Forest venceu no holdout inicial. Depois, o LightGBM tunado superou ambos no holdout e foi escolhido para produção.
 
 ---
 
-## 💰 Resultado de Negócio
+## 💰 Resultado de Negócio — LightGBM tunado
 
 Projeção para o período de teste (19/06/2015 a 31/07/2015), somando todas as lojas:
 
 | Cenário | Valor previsto |
 |---|---:|
-| 📈 Previsão | R$ 298.678.591,58 |
-| ⚠️ Cenário pessimista | R$ 297.863.641,65 |
-| ✅ Cenário otimista | R$ 299.493.541,51 |
+| 📈 Previsão | R$ 293.910.700,44 |
+| ⚠️ Cenário pessimista | R$ 293.154.958,54 |
+| ✅ Cenário otimista | R$ 294.666.442,33 |
+
+> Projeção calculada com o LightGBM tunado no holdout.
 
 ---
 
-## 🧠 Modelo em Produção
+## 🧠 Modelo Escolhido
 
-**Modelo final:** Random Forest Regressor
+**Modelo escolhido:** LightGBM Regressor tunado
 
 Hiperparâmetros escolhidos via `GridSearchCV` + validação temporal:
 
 ```python
 {
-    "n_estimators": 100,
-    "max_depth": None,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
+    "n_estimators": 900,
+    "learning_rate": 0.1,
+    "num_leaves": 255,
+    "min_child_samples": 50,
+    "feature_fraction": 0.8,
+    "bagging_fraction": 0.8,
+    "bagging_freq": 1,
+    "lambda_l2": 1.0,
 }
 ```
 
@@ -107,8 +139,10 @@ Detalhes:
 - **Seleção de variáveis:** Boruta em amostra de 100.000 registros com `random_state=42`
 - **Features finais:** 16 variáveis (sem `date` e sem `sales` para evitar vazamento)
 - **Target:** vendas transformadas com `log1p`
-- **Artefatos:** modelo e scalers serializados em `models/` e `parameters/`
-- **Arquivo servido pela API:** `models/model_rossmann.pkl`
+- **Artefato:** ~20,45 MB (vs 7,3 GB do Random Forest)
+- **Projeção no holdout:** R$ 293.910.700,44
+- **Arquivo servido pela API:** `models/model_rossmann.pkl` (LightGBM)
+- **Rollback:** manter uma cópia do Random Forest antigo, se necessário
 
 ---
 
@@ -207,10 +241,10 @@ GET /model-info    → tipo do modelo, quantidade e nomes das features
 │       ├── test_api.py         # Testes do endpoint (TestClient)
 │       └── test_rossman.py     # Testes do pipeline
 ├── models/
-│   └── model_rossmann.pkl      # Modelo treinado (Random Forest)
+│   └── model_rossmann.pkl      # Modelo final (LightGBM tunado)
 ├── parameters/                 # Scalers + contrato de features
 ├── utils/                      # Métricas e validação cruzada
-└── main.ipynb                  # Análise e modelagem (CRISP-DS)
+└── main.ipynb                  # Análise, modelagem e salvamento do modelo
 ```
 
 ---
@@ -225,7 +259,7 @@ Os arquivos `models/model_rossmann.pkl` e `parameters/*.pkl` **não são version
    ```
    O download usa o `kagglehub`. Se você já tiver os dados em outro diretório, pule esta etapa e aponte a variável de ambiente `ROSSMANN_DATA_DIR` para a pasta que contém `train.csv`, `test.csv` e `store.csv`.
 
-2. Execute o notebook `main.ipynb` até o final. As células das seções 5 e 8 salvam os arquivos de transformação em `parameters/` e o modelo em `models/model_rossmann.pkl`.
+2. Execute o notebook `main.ipynb` até o final. As células das seções 5 e 8 salvam os arquivos de transformação em `parameters/` e o modelo final LightGBM em `models/model_rossmann.pkl`.
 
 3. Confira se os arquivos foram criados:
    ```bash
@@ -267,4 +301,4 @@ $env:ROSSMANN_DATA_DIR="C:\caminho\para\rossmann-store-sales"; uv run pytest
 
 ## 🛠️ Stack
 
-🐍 Python · 📊 Pandas · 🌲 Random Forest · ⚙️ Scikit-learn · 🌿 LightGBM · 🐱 CatBoost · 🔬 Boruta · ⚡ FastAPI · 🚀 Uvicorn · 🧪 pytest · 🧹 Ruff · 📦 uv
+🐍 Python · 📊 Pandas · 🌿 LightGBM · ⚙️ Scikit-learn · 🐱 CatBoost · 🔬 Boruta · ⚡ FastAPI · 🚀 Uvicorn · 🧪 pytest · 🧹 Ruff · 📦 uv
