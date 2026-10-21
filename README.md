@@ -227,7 +227,7 @@ GET /model-info    → tipo do modelo, quantidade e nomes das features
 
 ```
 .
-├── Dockerfile                  # Imagem da API (multi-stage)
+├── Dockerfile                  # Imagem da API (single-stage)
 ├── docker-compose.yml          # Execução local da API
 ├── .dockerignore
 ├── api/

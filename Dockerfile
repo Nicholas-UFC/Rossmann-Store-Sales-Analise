@@ -1,40 +1,30 @@
 # syntax=docker/dockerfile:1
 
-FROM ghcr.io/astral-sh/uv:0.11.18 AS uv
-
-FROM python:3.14-slim AS builder
+FROM python:3.14-slim
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    UV_PROJECT_ENVIRONMENT=/opt/venv
-
-WORKDIR /app
-
-COPY --from=uv /uv /uvx /bin/
-COPY pyproject.toml uv.lock ./
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --only-group api --no-install-project
-
-FROM python:3.14-slim AS runtime
+    UV_NO_CACHE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN useradd --create-home --uid 10001 appuser
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir uv==0.11.18
 
 WORKDIR /app
 
-COPY --from=builder /opt/venv /opt/venv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --only-group api --no-install-project
+
 COPY api ./api
 COPY models ./models
 COPY parameters ./parameters
 
-ENV PATH="/opt/venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+ENV PATH="/app/.venv/bin:$PATH"
 
+RUN useradd --create-home --uid 10001 appuser
 USER appuser
 
 EXPOSE 8000
