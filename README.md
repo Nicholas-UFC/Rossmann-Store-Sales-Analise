@@ -15,7 +15,7 @@ Projeto completo de **Data Science em Produção**: da análise exploratória ao
 - 🔬 Seleção de variáveis com **Boruta**
 - ⏱️ Validação temporal com **walk-forward de 42 dias**
 - 🚀 **API FastAPI** servindo o modelo (`POST /rossman/predict`)
-- 🧪 **6 testes automatizados** com pytest
+- 🧪 **129 testes automatizados** com pytest, cobrindo unidade, contrato e integração
 
 ---
 
@@ -219,6 +219,7 @@ GET /model-info    → tipo do modelo, quantidade e nomes das features
 - Rejeita categorias desconhecidas e campos extras (`422`)
 - Rejeita datas fora do período suportado (`422`)
 - Limite de **10.000 registros** por requisição (`413`)
+- Limite de **10 MB** para o corpo JSON, validado antes do parse (`413`)
 
 ---
 
@@ -238,8 +239,11 @@ GET /model-info    → tipo do modelo, quantidade e nomes das features
 │   │   └── rossman.py          # Pipeline de transformação + predição
 │   └── tests/
 │       ├── conftest.py         # Fixtures compartilhadas (pytest)
-│       ├── test_api.py         # Testes do endpoint (TestClient)
-│       └── test_rossman.py     # Testes do pipeline
+│       ├── test_api.py         # Integração do endpoint (TestClient)
+│       ├── test_app_unit.py    # Unidade da camada HTTP
+│       ├── test_rossman.py     # Integração do pipeline
+│       ├── test_rossman_unit.py # Unidade do pipeline
+│       └── test_schemas.py     # Unidade dos schemas Pydantic
 ├── models/
 │   └── model_rossmann.pkl      # Modelo final (LightGBM tunado)
 ├── parameters/                 # Scalers + contrato de features
@@ -283,9 +287,14 @@ uv run python db/db.py
 # 3. Subir a API
 uv run uvicorn api.app:app --reload
 
-# 4. Executar os testes
+# 4. Executar os testes (unidade + integração)
 uv run pytest
+
+# 5. Executar apenas o gate de integração com modelo e dados reais
+uv run pytest -m integration --no-cov
 ```
+
+> A suíte roda com cobertura de branches e exige no mínimo **90%** em `api/`. Os testes de integração dependem do artefato `models/model_rossmann.pkl` e dos CSVs do Kaggle.
 
 Caso os dados do Kaggle estejam em outro local, informe o diretório via variável de ambiente:
 

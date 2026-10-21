@@ -8,8 +8,9 @@ from pickle import load
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
-from api.config.config import MAX_BATCH_SIZE, MODEL_PATH
+from api.config.config import MAX_BATCH_SIZE, MAX_BODY_BYTES, MODEL_PATH
 from api.models.schemas import RossmannPrediction, RossmannStore
 from api.services.rossman import Rossman
 
@@ -50,6 +51,30 @@ app = FastAPI(
 
 
 @app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    """Rejeita corpos declarados acima do limite antes do parse do JSON."""
+    raw_length = request.headers.get("content-length")
+    if raw_length is not None:
+        try:
+            content_length = int(raw_length)
+        except ValueError:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Content-Length inválido."},
+            )
+
+        if content_length > MAX_BODY_BYTES:
+            return JSONResponse(
+                status_code=413,
+                content={
+                    "detail": (f"Corpo da requisição excede o limite de {MAX_BODY_BYTES} bytes.")
+                },
+            )
+
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log básico de requisições HTTP."""
     start = time.perf_counter()
@@ -63,6 +88,18 @@ async def log_requests(request: Request, call_next):
         duration_ms,
     )
     return response
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Evita expor detalhes internos em falhas inesperadas."""
+    logger.error(
+        "Erro interno não tratado em %s %s", request.method, request.url.path, exc_info=exc
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno ao processar a requisição."},
+    )
 
 
 @app.get("/health")

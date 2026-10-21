@@ -1,7 +1,19 @@
 """Testes de integração do endpoint /rossman/predict e endpoints auxiliares."""
 
+import json
+
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
+
+from api.config.config import PARAMETERS_PATH
+
+pytestmark = pytest.mark.integration
+
+
+def feature_names() -> list[str]:
+    """Lê o contrato real salvo pelo treino."""
+    return json.loads((PARAMETERS_PATH / "feature_names.json").read_text(encoding="utf-8"))
 
 
 def payload_json(df: pd.DataFrame) -> list[dict]:
@@ -16,7 +28,7 @@ def test_health_retorna_modelo_carregado(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["model"] == "RandomForestRegressor"
+    assert body["model"] == "LGBMRegressor"
 
 
 def test_model_info_retorna_contrato_de_features(client: TestClient) -> None:
@@ -25,10 +37,12 @@ def test_model_info_retorna_contrato_de_features(client: TestClient) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["model"] == "RandomForestRegressor"
+    assert body["model"] == "LGBMRegressor"
     assert body["feature_count"] == 16
+    assert body["features"] == feature_names()
     assert "sales" not in body["features"]
     assert "date" not in body["features"]
+    assert body["artifact"].endswith("model_rossmann.pkl")
 
 
 def test_predict_retorna_predicao_para_lote(client: TestClient, df_raw: pd.DataFrame) -> None:
@@ -79,9 +93,7 @@ def test_predict_rejeita_loja_fechada(client: TestClient, df_raw: pd.DataFrame) 
     assert "abertas" in response.json()["detail"]
 
 
-def test_predict_rejeita_store_type_desconhecido(
-    client: TestClient, df_raw: pd.DataFrame
-) -> None:
+def test_predict_rejeita_store_type_desconhecido(client: TestClient, df_raw: pd.DataFrame) -> None:
     """Categorias fora do treino devem ser rejeitadas pelo schema."""
     payload = payload_json(df_raw.head(1))
     payload[0]["StoreType"] = "z"
@@ -120,9 +132,7 @@ def test_predict_rejeita_promo2_sem_campos_obrigatorios(
     assert any("Promo2" in error["msg"] for error in response.json()["detail"])
 
 
-def test_predict_rejeita_promo_interval_invalido(
-    client: TestClient, df_raw: pd.DataFrame
-) -> None:
+def test_predict_rejeita_promo_interval_invalido(client: TestClient, df_raw: pd.DataFrame) -> None:
     """PromoInterval com formato desconhecido deve ser rejeitado."""
     payload = payload_json(df_raw.head(1))
     payload[0]["Promo2"] = 1
@@ -146,9 +156,7 @@ def test_predict_rejeita_campo_extra(client: TestClient, df_raw: pd.DataFrame) -
     assert response.status_code == 422
 
 
-def test_predict_rejeita_lote_acima_do_limite(
-    client: TestClient, df_raw: pd.DataFrame
-) -> None:
+def test_predict_rejeita_lote_acima_do_limite(client: TestClient, df_raw: pd.DataFrame) -> None:
     """Lotes acima do limite configurado devem ser rejeitados."""
     one = payload_json(df_raw.head(1))[0]
     payload = [one] * 10_001
@@ -157,3 +165,27 @@ def test_predict_rejeita_lote_acima_do_limite(
 
     assert response.status_code == 413
     assert "limite" in response.json()["detail"].lower()
+
+
+def test_predict_e_deterministico(client: TestClient, df_raw: pd.DataFrame) -> None:
+    """O mesmo payload deve gerar a mesma predição."""
+    payload = payload_json(df_raw.head(1))
+
+    first = client.post("/rossman/predict", json=payload)
+    second = client.post("/rossman/predict", json=payload)
+
+    assert first.status_code == second.status_code == 200
+    assert first.json() == second.json()
+
+
+def test_predict_preserva_campos_e_ordem_do_lote(client: TestClient, df_raw: pd.DataFrame) -> None:
+    """A resposta deve manter os campos originais e a ordem dos registros."""
+    payload = payload_json(df_raw.head(3))
+
+    response = client.post("/rossman/predict", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["Store"] for item in body] == [item["Store"] for item in payload]
+    assert all(item["Date"] == payload[index]["Date"] for index, item in enumerate(body))
+    assert all(isinstance(item["prediction"], float) for item in body)

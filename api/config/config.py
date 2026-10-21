@@ -12,6 +12,7 @@ PARAMETERS_PATH = PROJECT_ROOT / "parameters"
 
 # Validação de payload
 MAX_BATCH_SIZE = 10_000
+MAX_BODY_BYTES = 10 * 1024 * 1024
 
 # Período suportado pelo modelo atual.
 # O treino usa dados até jul/2015; o período de competição vai até set/2015.

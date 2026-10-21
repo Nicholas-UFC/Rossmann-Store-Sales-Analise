@@ -64,6 +64,7 @@ docstring-code-format = true
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.4",
 ]
 
@@ -72,3 +73,22 @@ dev = [
 testpaths = ["api/tests"]
 # Garante que a raiz do projeto esteja no sys.path (imports como api.services.rossman)
 pythonpath = ["."]
+addopts = [
+    "--cov=api",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-fail-under=90",
+]
+markers = [
+    "integration: testes que dependem do modelo real e dos dados do Kaggle",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["api"]
+omit = ["api/tests/*"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true

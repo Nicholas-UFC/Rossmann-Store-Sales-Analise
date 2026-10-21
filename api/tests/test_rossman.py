@@ -4,11 +4,21 @@ Valida o fluxo completo usado pela API:
     limpando_dados -> engenharia_recursos -> preparando_dados -> get_prediction
 """
 
+import json
 from json import loads
 
 import pandas as pd
+import pytest
 
+from api.config.config import PARAMETERS_PATH
 from api.services.rossman import Rossman
+
+pytestmark = pytest.mark.integration
+
+
+def contract() -> list[str]:
+    """Lê o contrato de features produzido pelo treino."""
+    return json.loads((PARAMETERS_PATH / "feature_names.json").read_text(encoding="utf-8"))
 
 
 def test_pipeline_carrega_todos_os_scalers(pipeline: Rossman) -> None:
@@ -26,9 +36,16 @@ def test_pipeline_carrega_todos_os_scalers(pipeline: Rossman) -> None:
 
 
 def test_pipeline_carrega_contrato_de_features(pipeline: Rossman) -> None:
-    """O contrato de features deve ser carregado de parameters/feature_names.json."""
-    assert pipeline.feature_names is not None, "feature_names não foi carregado"
-    assert len(pipeline.feature_names) > 0, "feature_names.json está vazio"
+    """O contrato deve ser exatamente o salvo em parameters/feature_names.json."""
+    assert pipeline.feature_names == contract()
+    assert len(pipeline.feature_names) == 16
+    assert "date" not in pipeline.feature_names
+    assert "sales" not in pipeline.feature_names
+
+
+def test_modelo_real_usa_o_contrato_de_features(pipeline: Rossman, model) -> None:
+    """O modelo carregado deve esperar exatamente as features do contrato."""
+    assert pipeline.obter_features_modelo(model) == pipeline.feature_names
 
 
 def test_formatando_dados_gera_features_esperadas(pipeline: Rossman, df_raw: pd.DataFrame) -> None:

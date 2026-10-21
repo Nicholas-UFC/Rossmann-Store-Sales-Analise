@@ -60,8 +60,7 @@ class RossmannStore(BaseModel):
             return value
         if not _PROMO_INTERVAL_REGEX.fullmatch(value):
             raise ValueError(
-                "PromoInterval inválido. Use meses separados por vírgula, "
-                'ex.: "Jan,Apr,Jul,Oct".'
+                'PromoInterval inválido. Use meses separados por vírgula, ex.: "Jan,Apr,Jul,Oct".'
             )
         return value
 
@@ -74,8 +73,7 @@ class RossmannStore(BaseModel):
             or self.PromoInterval is None
         ):
             raise ValueError(
-                "Promo2SinceWeek, Promo2SinceYear e PromoInterval são obrigatórios "
-                "quando Promo2=1."
+                "Promo2SinceWeek, Promo2SinceYear e PromoInterval são obrigatórios quando Promo2=1."
             )
         return self
 

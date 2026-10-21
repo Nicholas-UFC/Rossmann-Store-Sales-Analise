@@ -18,6 +18,10 @@ main.copy.ipynb
 # Cache do Ruff
 .ruff_cache
 
+# Cobertura de testes
+.coverage
+htmlcov/
+
 # Arquivos de modelos serializados
 *.pkl
 feature_names.json
