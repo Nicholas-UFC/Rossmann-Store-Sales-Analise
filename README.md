@@ -227,6 +227,9 @@ GET /model-info    → tipo do modelo, quantidade e nomes das features
 
 ```
 .
+├── Dockerfile                  # Imagem da API (multi-stage)
+├── docker-compose.yml          # Execução local da API
+├── .dockerignore
 ├── api/
 │   ├── __init__.py
 │   ├── app.py                  # API FastAPI
@@ -308,6 +311,32 @@ $env:ROSSMANN_DATA_DIR="C:\caminho\para\rossmann-store-sales"; uv run pytest
 
 ---
 
+## 🐳 Docker — somente a API
+
+A imagem instala apenas o dependency group `api`, copia o modelo e os scalers para dentro dela e roda como usuário não-root.
+
+```bash
+# build
+docker build -t rossmann-api .
+
+# run
+docker run --rm -p 8000:8000 rossmann-api
+
+# ou com Docker Compose
+docker compose up --build
+docker compose down
+```
+
+O Compose usa a porta `8000` por padrão; para trocar, defina `API_PORT`:
+
+```bash
+API_PORT=8080 docker compose up --build
+```
+
+O healthcheck consulta `GET /health`. Depois de atualizar o modelo ou os scalers, faça o rebuild da imagem.
+
+---
+
 ## 🛠️ Stack
 
-🐍 Python · 📊 Pandas · 🌿 LightGBM · ⚙️ Scikit-learn · 🐱 CatBoost · 🔬 Boruta · ⚡ FastAPI · 🚀 Uvicorn · 🧪 pytest · 🧹 Ruff · 📦 uv
+🐍 Python · 📊 Pandas · 🌿 LightGBM · ⚙️ Scikit-learn · 🐱 CatBoost · 🔬 Boruta · ⚡ FastAPI · 🚀 Uvicorn · 🐳 Docker · 🧪 pytest · 🧹 Ruff · 📦 uv

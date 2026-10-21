@@ -339,6 +339,15 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+api = [
+    { name = "fastapi" },
+    { name = "lightgbm" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pydantic" },
+    { name = "scikit-learn" },
+    { name = "uvicorn" },
+]
 dev = [
     { name = "httpx" },
     { name = "pytest" },
@@ -369,6 +378,15 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+api = [
+    { name = "fastapi", specifier = "==0.141.1" },
+    { name = "lightgbm", specifier = "==4.7.0" },
+    { name = "numpy", specifier = "==2.5.2" },
+    { name = "pandas", specifier = "==3.0.5" },
+    { name = "pydantic", specifier = "==2.13.4" },
+    { name = "scikit-learn", specifier = "==1.9.0" },
+    { name = "uvicorn", specifier = "==0.52.4" },
+]
 dev = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=9.1.1" },

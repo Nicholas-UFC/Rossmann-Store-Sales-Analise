@@ -61,6 +61,15 @@ indent-style = "space"
 docstring-code-format = true
 
 [dependency-groups]
+api = [
+    "fastapi==0.141.1",
+    "uvicorn==0.52.4",
+    "pandas==3.0.5",
+    "numpy==2.5.2",
+    "scikit-learn==1.9.0",
+    "lightgbm==4.7.0",
+    "pydantic==2.13.4",
+]
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
